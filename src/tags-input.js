@@ -99,15 +99,26 @@ tagsInput.directive('tagsInput', function($timeout, $document, $window, tagsInpu
         };
 
         self.remove = function(index) {
-            var tag = self.items[index];
+            var tag = self.items[index],
+                hasPreRemoved = events.trigger('tag-pre-removed',
+                    {
+                        $tag: tag,
+                        onConfirm: function () {
+                            removeTag(index, tag);
+                        }
+                    });
 
-            if (onTagRemoving({ $tag: tag }))  {
-                self.items.splice(index, 1);
-                self.clearSelection();
-                events.trigger('tag-removed', { $tag: tag });
-                return tag;
+            if (!hasPreRemoved) {
+                removeTag(index, tag);
             }
+
+            return tag;
         };
+
+        function removeTag(index, tag) {
+            self.items.splice(index, 1)[0];
+            events.trigger('tag-removed', { $tag: tag });
+        }
 
         self.select = function(index) {
             if (index < 0) {
@@ -158,6 +169,7 @@ tagsInput.directive('tagsInput', function($timeout, $document, $window, tagsInpu
             onInvalidTag: '&',
             onTagRemoving: '&',
             onTagRemoved: '&',
+            onTagPreRemoved: '&',
             onTagClicked: '&'
         },
         replace: false,
@@ -189,7 +201,8 @@ tagsInput.directive('tagsInput', function($timeout, $document, $window, tagsInpu
                 keyProperty: [String, ''],
                 allowLeftoverText: [Boolean, false],
                 addFromAutocompleteOnly: [Boolean, false],
-                spellcheck: [Boolean, true]
+                spellcheck: [Boolean, true],
+                enableBackspaceRemove: [Boolean, true]
             });
 
             $scope.tagList = new TagList($scope.options, $scope.events,
@@ -342,7 +355,14 @@ tagsInput.directive('tagsInput', function($timeout, $document, $window, tagsInpu
                 }
             };
 
-            events
+            events                
+                .on ('tag-pre-removed', function (opt) {
+                    if (scope.onTagRemoved) {
+                        scope.onTagPreRemoved({opt: opt});
+                    } else {
+                        opt.onConfirm();
+                    }
+                })
                 .on('tag-added', scope.onTagAdded)
                 .on('invalid-tag', scope.onInvalidTag)
                 .on('tag-removed', scope.onTagRemoved)
@@ -396,7 +416,7 @@ tagsInput.directive('tagsInput', function($timeout, $document, $window, tagsInpu
                     shouldAdd = !options.addFromAutocompleteOnly && addKeys[key];
                     shouldRemove = (key === KEYS.backspace || key === KEYS.delete) && tagList.selected;
                     shouldEditLastTag = key === KEYS.backspace && scope.newTag.text().length === 0 && options.enableEditingLastTag;
-                    shouldSelect = (key === KEYS.backspace || key === KEYS.left || key === KEYS.right) && scope.newTag.text().length === 0 && !options.enableEditingLastTag;
+                    shouldSelect = ((key === KEYS.backspace && options.enableBackspaceRemove) || key === KEYS.left || key === KEYS.right) && scope.newTag.text().length === 0 && !options.enableEditingLastTag;
 
                     if (shouldAdd) {
                         tagList.addText(scope.newTag.text());
@@ -412,6 +432,9 @@ tagsInput.directive('tagsInput', function($timeout, $document, $window, tagsInpu
                         }
                     }
                     else if (shouldRemove) {
+                        if (key === KEYS.backspace && !options.enableBackspaceRemove) {
+                            return;
+                        }
                         tagList.removeSelected();
                     }
                     else if (shouldSelect) {
