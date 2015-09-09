@@ -112,11 +112,19 @@ tagsInput.directive('tagsInput', function($timeout, $document, $window, tagsInpu
                 removeTag(index, tag);
             }
 
+            if (onTagRemoving({ $tag: tag }))  {
+                self.items.splice(index, 1);
+                self.clearSelection();
+                events.trigger('tag-removed', { $tag: tag });
+                return tag;
+            }
+
             return tag;
         };
 
         function removeTag(index, tag) {
-            self.items.splice(index, 1)[0];
+            self.items.splice(index, 1);
+            self.clearSelection();
             events.trigger('tag-removed', { $tag: tag });
         }
 
@@ -434,8 +442,7 @@ tagsInput.directive('tagsInput', function($timeout, $document, $window, tagsInpu
                         }
                     }
                     else if (shouldRemove) {
-                        if (key === KEYS.backspace && !options.enableBackspaceRemove 
-                          || key === KEYS.delete && !options.enableDeleteRemove) {
+                        if (key === KEYS.backspace && !options.enableBackspaceRemove || key === KEYS.delete && !options.enableDeleteRemove) {
                             return;
                         }
                         tagList.removeSelected();

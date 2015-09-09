@@ -5,7 +5,7 @@
  * Copyright (c) 2013-2015 Michael Benford
  * License: MIT
  *
- * Generated at 2015-09-08 10:55:46 +0300
+ * Generated at 2015-09-09 10:27:48 +0300
  */
 (function() {
 'use strict';
@@ -141,11 +141,19 @@ tagsInput.directive('tagsInput', ["$timeout", "$document", "$window", "tagsInput
                 removeTag(index, tag);
             }
 
+            if (onTagRemoving({ $tag: tag }))  {
+                self.items.splice(index, 1);
+                self.clearSelection();
+                events.trigger('tag-removed', { $tag: tag });
+                return tag;
+            }
+
             return tag;
         };
 
         function removeTag(index, tag) {
-            self.items.splice(index, 1)[0];
+            self.items.splice(index, 1);
+            self.clearSelection();
             events.trigger('tag-removed', { $tag: tag });
         }
 
@@ -463,8 +471,7 @@ tagsInput.directive('tagsInput', ["$timeout", "$document", "$window", "tagsInput
                         }
                     }
                     else if (shouldRemove) {
-                        if (key === KEYS.backspace && !options.enableBackspaceRemove 
-                          || key === KEYS.delete && !options.enableDeleteRemove) {
+                        if (key === KEYS.backspace && !options.enableBackspaceRemove || key === KEYS.delete && !options.enableDeleteRemove) {
                             return;
                         }
                         tagList.removeSelected();
